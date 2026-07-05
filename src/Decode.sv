@@ -27,8 +27,8 @@ module Decode(
 logic [15:0] ir;
 
 // LOCAL VARIABLES
-iType_t [1:0] INSTR_TYPE;
-maType_t [1:0] MA_TYPE;
+iType_t INSTR_TYPE;
+maType_t MA_TYPE;
 indType_t IND_TYPE;
 
 logic[3:0] opcode;

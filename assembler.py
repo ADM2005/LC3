@@ -201,9 +201,9 @@ def intToUnsignedBinary(bits, num):
     bitString = ''
     value = 0
     for i in range(0, bits):
-        if value + pow(2,bits-i) <= num:
+        if value + pow(2,bits-i-1) <= num:
             bitString += '1'
-            value += pow(2,bits-i)
+            value += pow(2,bits-i-1)
         else:
             bitString += '0'
     return bitString
@@ -241,7 +241,7 @@ for instr in instructions:
                 bitString += "000"
                 bitString += intToUnsignedBinary(3, int(tokens[3][1:]))
         case "not":
-            bitString += "0101"
+            bitString += "1001"
             destReg = int(tokens[1][1:])
             bitString += intToUnsignedBinary(3, destReg)
             srcReg = int(tokens[2][1:])

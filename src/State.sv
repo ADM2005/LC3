@@ -79,7 +79,7 @@ always_comb begin
     nextOut.rWe = 0;
     nextOut.mOp = 0;
 
-    case(state)
+    case(nextState)
         UPDATE_PC:
             nextOut.pEn = 1;                      // Enable PC to be updated (either incremented or set depending on last decoded instruction)
         FETCH:
@@ -97,11 +97,11 @@ always_comb begin
                 Bit 0: Indirect or direct.
         */
         IND_MEMORY:
-            nextOut.mOp = {eREADY, cCtrl.indType, 1'b1};    
+            nextOut.mOp = {eREADY, cCtrl.indType, 1'b0};    
         READ_MEMORY:
-            nextOut.mOp = {eREADY, 1'b0, 1'b0};
+            nextOut.mOp = {eREADY, 1'b0, cCtrl.maType == MEM_IND ? 1'b1 : 1'b0};
         WRITE_MEMORY:
-            nextOut.mOp = {eREADY, 1'b1, 1'b0};
+            nextOut.mOp = {eREADY, 1'b1, cCtrl.maType == MEM_IND ? 1'b1 : 1'b0};
     endcase
 end
 
