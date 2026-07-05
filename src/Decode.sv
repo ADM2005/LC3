@@ -147,7 +147,7 @@ always_comb begin
         end
         OP_BR: begin
             INSTR_TYPE = INSTR_CONTROL;
-            pNext = (~ir[11] | psr[2]) & (~ir[10] | psr[1]) & (~ir[9] | psr[0]);    // Boolean to test branch cond
+            pNext = (~ir[11] | psr[2]) | (~ir[10] | psr[1]) | (~ir[9] | psr[0]);    // Boolean to test branch cond
             aOp = 0;
             offset = ir[8:0];
         end
