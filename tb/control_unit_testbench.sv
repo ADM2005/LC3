@@ -1,5 +1,6 @@
 `include "../src/State.sv"
 `include "../src/Decode.sv"
+
 `timescale 1us/1ns
 
 import State_pkg::*;
@@ -21,11 +22,13 @@ logic [2:0] psr;
 logic decodeEn;
 cCtrl_t cCtrl;
 
+// Testbench
+
 State State(
     .cCtrl(cCtrl),
     .eREADY(eREADY),
     .clk(clk),
-    .reset(reset)
+    .reset(reset) 
 );
 
 Decode Decode(
@@ -43,8 +46,28 @@ initial begin
 clk = 0;
 reset = 0;
 eREADY = 0;
-eDIN = 16'h0000
-psr = 3'b000
+eDIN = 16'h0000;
+psr = 3'b000;
+
+#10 reset = 1;
+reset = 0;
+
+// Register Add
+eREADY = 1;
+eDIN = 16'b0001000000000000;
+@ (posedge clk);
+eREADY = 0;
+
+while (State.state != UPDATE_PC) @ (negedge clk);
+
+$stop;
+
+// Immediate Add
+
+// Register And
+
+// Immediate And
+
 end
 
 endmodule
