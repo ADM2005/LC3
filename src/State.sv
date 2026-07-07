@@ -83,9 +83,9 @@ always_comb begin
         UPDATE_PC:
             nextOut.pEn = 1;                      // Enable PC to be updated (either incremented or set depending on last decoded instruction)
         FETCH:
-            nextOut.fEn = eREADY;                 // Enable Fetch module to initiate memory read for instruction fetch.
+            nextOut.fEn = 1;                 // Enable Fetch module to initiate memory read for instruction fetch.
         DECODE:
-            nextOut.dEn = eREADY;                 // Enable Decode module to read the bus.
+            nextOut.dEn = 1;                 // Enable Decode module to read the bus.
         WRITE_REGISTER:
             nextOut.rWe = 1;                      // Enables Registers module to overwrite register
 
@@ -97,11 +97,11 @@ always_comb begin
                 Bit 0: Indirect or direct.
         */
         IND_MEMORY:
-            nextOut.mOp = {eREADY, cCtrl.indType, 1'b0};    
+            nextOut.mOp = {1'b1, cCtrl.indType, 1'b0};    
         READ_MEMORY:
-            nextOut.mOp = {eREADY, 1'b0, cCtrl.maType == MEM_IND ? 1'b1 : 1'b0};
+            nextOut.mOp = {1'b1, 1'b0, cCtrl.maType == MEM_IND ? 1'b1 : 1'b0};
         WRITE_MEMORY:
-            nextOut.mOp = {eREADY, 1'b1, cCtrl.maType == MEM_IND ? 1'b1 : 1'b0};
+            nextOut.mOp = {1'b1, 1'b1, cCtrl.maType == MEM_IND ? 1'b1 : 1'b0};
     endcase
 end
 

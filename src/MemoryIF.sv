@@ -16,6 +16,7 @@ logic [1:0] memOperation;
 assign memOperation = mOp[1:0];
 
 always_comb begin
+    if(mOp[2]) begin
      case(memOperation)
         2'b00: begin
             // READ DIRECT
@@ -52,6 +53,12 @@ always_comb begin
             iWEA = 0;
         end
     endcase
+    end else begin
+        eDOUT = 16'hzzzz;
+        iBR = 1'bz;
+        iADDR = 16'hxxxx;
+        iWEA = 0;
+    end
 end
 
 endmodule

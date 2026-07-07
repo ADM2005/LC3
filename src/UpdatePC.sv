@@ -13,7 +13,7 @@ module UpdatePC(
 assign nPC = pc + 1;
 
 always_ff @(negedge clk, posedge reset) begin
-    if(reset) pc <= 16'h00;
+    if(reset) pc <= 16'h0000;
     else if(en) pc <= sel ? tPC : nPC;
 end
 

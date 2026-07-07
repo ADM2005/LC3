@@ -64,7 +64,8 @@ Decode decode(
     .sr2ID(sr2ID),
     .drID(drID),
     .imm(imm),
-    .offset(offset)
+    .offset(offset),
+    .aOp(aOp)
 );
 
 // Fetch
@@ -80,12 +81,12 @@ Fetch fetch(
 
     .iBR(iBR0),
     .iADDR(iADDR0),
-    .iWEA0(iWEA0)
+    .iWEA(iWEA0)
 );
 
 // Update PC
+logic [15:0] aOut;
 
-logic [15:0] tPC;
 logic [15:0] nPC;
 
 UpdatePC updatePC(
@@ -93,7 +94,7 @@ UpdatePC updatePC(
     .reset(reset),
     .en(pEn),
     .sel(pNext),
-    .tPC(tPC),
+    .tPC(aOut),
     .nPC(nPC),
     .pc(pc)
 );
@@ -131,7 +132,6 @@ ALU alu(
 
 // Address
 
-logic [15:0] aOut;
 
 Address address(
   .baseReg(sr1),
@@ -159,7 +159,7 @@ logic iWEA1;
 
 MemoryIF memoryIF(
     .eDIN(eDIN),
-    .sr(sr1),
+    .sr(sr2),
     .addr(aOut),
     .mOp(mOp),
     .eDOUT(eDOUT),

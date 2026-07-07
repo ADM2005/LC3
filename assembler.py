@@ -1,7 +1,6 @@
 import sys
 
-print(sys.argv)
-# Usage: python3 assembler.py infile.s outfile.hex
+# Usage: python3 assembler.py infile.s outfile.bin
 if len(sys.argv) < 3:
     raise ("Incorrect number of arguments")
 filepath = sys.argv[1]
@@ -12,6 +11,8 @@ INSTRUCTIONS = ["add", "and", "not", "ld", "ldr",
                    "brn", "brz", "brp", "brnz", 
                    "brzp", "brnp", "brnzp", "jmp",
                      "halt"]
+
+DIRECTIVES = ["defw", "org"]
 
 OPCODES = ["0001", "0101", "1001", "0010", "0110", "1010", 
            "1110", "0011", "0111", "1011", "0000", "1100",
@@ -142,10 +143,13 @@ f = open(filepath, "r")
 lines = f.readlines()
 f.close()
 
-instructions = []
+
+memoryBlocks = []
+data = []
 labels = {}
 
 i = 0
+start = 0
 # Cleanup
 for line_number, line in enumerate(lines):
     # Determine if instruction or label or some bs
@@ -157,7 +161,7 @@ for line_number, line in enumerate(lines):
             raise Exception()
         tokens = [token.replace(',', '') for token in tokens]
         if validateInstruction(tokens):
-            instructions.append((i, tokens))
+            data.append((i, "instr",tokens))
         else:
             raise Exception(f"Syntax Error on line {line_number}.\nLine: {line}")
         i += 1
@@ -166,8 +170,27 @@ for line_number, line in enumerate(lines):
         label = tokens[0][:-1]
         labels[label] = i
     else:
-        print("OTHER")
-
+        print("ASSEMBLER DIRECTIVE")
+        directive = tokens[0].lower().strip()
+        if directive == "org":
+            if len(tokens) != 2 or not isInteger(tokens[1]):
+                raise Exception("ORG directive should have memory location after")
+            if data != []:
+                memoryBlocks.append((start,data))
+            i = int(tokens[1])
+            start = int(tokens[1])
+            data = []
+        elif len(tokens) > 2 and tokens[1].lower().strip() == "defw":
+            label = tokens[0]
+            labels[label] = i
+            for j in range(i, i+len(tokens[2:])):
+                number = tokens[j-i+2].replace(',', '')
+                if not isInteger(number):
+                    raise Exception("DEFW statement should have numbers")
+                data.append((j, "data", int(number)))
+            i = i + len(tokens[2:])
+if data != []:
+    memoryBlocks.append((start, data))
 def intToBinary(bits, num):
     lowest = -1 * pow(2, bits-1)
     highest = pow(2,bits-1) - 1
@@ -208,207 +231,219 @@ def intToUnsignedBinary(bits, num):
             bitString += '0'
     return bitString
 f = open(out, "wb")
-for instr in instructions:
-    mem_location = instr[0]
-    tokens = instr[1]
-    operation = tokens[0].lower()
-    bitString = ''
-    match operation:
-        case "add":
-            bitString += "0001"
-            destReg = int(tokens[1][1:])
-            bitString += intToUnsignedBinary(3, destReg)
-            srcReg = int(tokens[2][1:])
-            bitString += intToUnsignedBinary(3, srcReg)
+f.write(len(memoryBlocks).to_bytes(2, byteorder="big"))
+for block in memoryBlocks:
+    f.write(block[0].to_bytes(2, byteorder="big"))
+    f.write(len(block[1]).to_bytes(2, byteorder="big"))
+for block in memoryBlocks:
+    base = block[0]
+    for i in block[1]:
+        mem_location = i[0]
+        print(mem_location)
+        if i[1] == "instr":
+            tokens = i[2]
+            operation = tokens[0].lower()
+            bitString = ''
+            match operation:
+                case "add":
+                    bitString += "0001"
+                    destReg = int(tokens[1][1:])
+                    bitString += intToUnsignedBinary(3, destReg)
+                    srcReg = int(tokens[2][1:])
+                    bitString += intToUnsignedBinary(3, srcReg)
 
-            if isInteger(tokens[3]):
-                bitString += "1"
-                bitString += intToBinary(5, int(tokens[3]))
-            else:
-                bitString += "000"
-                bitString += intToUnsignedBinary(3, int(tokens[3][1:]))
-        case "and":
-            bitString += "0101"
-            destReg = int(tokens[1][1:])
-            bitString += intToUnsignedBinary(3, destReg)
-            srcReg = int(tokens[2][1:])
-            bitString += intToUnsignedBinary(3, srcReg)
+                    if isInteger(tokens[3]):
+                        bitString += "1"
+                        bitString += intToBinary(5, int(tokens[3]))
+                    else:
+                        bitString += "000"
+                        bitString += intToUnsignedBinary(3, int(tokens[3][1:]))
+                case "and":
+                    bitString += "0101"
+                    destReg = int(tokens[1][1:])
+                    bitString += intToUnsignedBinary(3, destReg)
+                    srcReg = int(tokens[2][1:])
+                    bitString += intToUnsignedBinary(3, srcReg)
 
-            if isInteger(tokens[3]):
-                bitString += "1"
-                bitString += intToBinary(5, int(tokens[3]))
-            else:
-                bitString += "000"
-                bitString += intToUnsignedBinary(3, int(tokens[3][1:]))
-        case "not":
-            bitString += "1001"
-            destReg = int(tokens[1][1:])
-            bitString += intToUnsignedBinary(3, destReg)
-            srcReg = int(tokens[2][1:])
-            bitString += intToUnsignedBinary(3, srcReg)
-            bitString += "111111"
-        case "ld":
-            bitString += "0010"
-            destReg = int(tokens[1][1:])
-            bitString += intToUnsignedBinary(3, destReg)
+                    if isInteger(tokens[3]):
+                        bitString += "1"
+                        bitString += intToBinary(5, int(tokens[3]))
+                    else:
+                        bitString += "000"
+                        bitString += intToUnsignedBinary(3, int(tokens[3][1:]))
+                case "not":
+                    bitString += "1001"
+                    destReg = int(tokens[1][1:])
+                    bitString += intToUnsignedBinary(3, destReg)
+                    srcReg = int(tokens[2][1:])
+                    bitString += intToUnsignedBinary(3, srcReg)
+                    bitString += "111111"
+                case "ld":
+                    bitString += "0010"
+                    destReg = int(tokens[1][1:])
+                    bitString += intToUnsignedBinary(3, destReg)
 
-            target = tokens[2]
-            if target not in labels:
-                print(f"Label {target} not defined.")
-            target_loc = labels[target]
-            npc = mem_location + 1
+                    target = tokens[2]
+                    if target not in labels:
+                        print(f"Label {target} not defined.")
+                    target_loc = labels[target]
+                    npc = mem_location + 1
 
-            offset = target_loc - npc
-            bitString += intToBinary(9, offset)
-        case "ldr":
-            bitString += "0110"
-            destReg = int(tokens[1][1:])
-            bitString += intToUnsignedBinary(3, destReg)
-            baseReg = int(tokens[2][1:])
-            bitString += intToUnsignedBinary(3, baseReg)
-            bitString += intToBinary(6, int(tokens[3]))
-        case "ldi":
-            bitString += "1010"
-            destReg = int(tokens[1][1:])
-            bitString += intToUnsignedBinary(3, destReg)
+                    offset = target_loc - npc
+                    bitString += intToBinary(9, offset)
+                case "ldr":
+                    bitString += "0110"
+                    destReg = int(tokens[1][1:])
+                    bitString += intToUnsignedBinary(3, destReg)
+                    baseReg = int(tokens[2][1:])
+                    bitString += intToUnsignedBinary(3, baseReg)
+                    bitString += intToBinary(6, int(tokens[3]))
+                case "ldi":
+                    bitString += "1010"
+                    destReg = int(tokens[1][1:])
+                    bitString += intToUnsignedBinary(3, destReg)
 
-            target = tokens[2]
-            if target not in labels:
-                print(f"Label {target} not defined.")
-            target_loc = labels[target]
-            npc = mem_location + 1
+                    target = tokens[2]
+                    if target not in labels:
+                        print(f"Label {target} not defined.")
+                    target_loc = labels[target]
+                    npc = mem_location + 1
 
-            offset = target_loc - npc
-            bitString += intToBinary(9, offset)
-        case "lea":
-            bitString += "1110"
-            destReg = int(tokens[1][1:])
-            bitString += intToUnsignedBinary(3, destReg)
+                    offset = target_loc - npc
+                    bitString += intToBinary(9, offset)
+                case "lea":
+                    bitString += "1110"
+                    destReg = int(tokens[1][1:])
+                    bitString += intToUnsignedBinary(3, destReg)
 
-            target = tokens[2]
-            if target not in labels:
-                print(f"Label {target} not defined.")
-            target_loc = labels[target]
-            npc = mem_location + 1
+                    target = tokens[2]
+                    if target not in labels:
+                        print(f"Label {target} not defined.")
+                    target_loc = labels[target]
+                    npc = mem_location + 1
 
-            offset = target_loc - npc
-            bitString += intToBinary(9, offset)
-        case "st":
-            bitString += "0011"
-            destReg = int(tokens[1][1:])
-            bitString += intToUnsignedBinary(3, destReg)
+                    offset = target_loc - npc
+                    bitString += intToBinary(9, offset)
+                case "st":
+                    bitString += "0011"
+                    destReg = int(tokens[1][1:])
+                    bitString += intToUnsignedBinary(3, destReg)
 
-            target = tokens[2]
-            if target not in labels:
-                print(f"Label {target} not defined.")
-            target_loc = labels[target]
-            npc = mem_location + 1
+                    target = tokens[2]
+                    if target not in labels:
+                        print(f"Label {target} not defined.")
+                    target_loc = labels[target]
+                    npc = mem_location + 1
 
-            offset = target_loc - npc
-            bitString += intToBinary(9, offset)
-        case "str":
-            bitString += "0111"
-            destReg = int(tokens[1][1:])
-            bitString += intToUnsignedBinary(3, destReg)
-            baseReg = int(tokens[2][1:])
-            bitString += intToUnsignedBinary(3, baseReg)
-            bitString += intToBinary(6, int(tokens[3]))
-        case "sti":
-            bitString += "1011"
-            destReg = int(tokens[1][1:])
-            bitString += intToUnsignedBinary(3, destReg)
+                    offset = target_loc - npc
+                    bitString += intToBinary(9, offset)
+                case "str":
+                    bitString += "0111"
+                    destReg = int(tokens[1][1:])
+                    bitString += intToUnsignedBinary(3, destReg)
+                    baseReg = int(tokens[2][1:])
+                    bitString += intToUnsignedBinary(3, baseReg)
+                    bitString += intToBinary(6, int(tokens[3]))
+                case "sti":
+                    bitString += "1011"
+                    destReg = int(tokens[1][1:])
+                    bitString += intToUnsignedBinary(3, destReg)
 
-            target = tokens[2]
-            if target not in labels:
-                print(f"Label {target} not defined.")
-            target_loc = labels[target]
-            npc = mem_location + 1
+                    target = tokens[2]
+                    if target not in labels:
+                        print(f"Label {target} not defined.")
+                    target_loc = labels[target]
+                    npc = mem_location + 1
 
-            offset = target_loc - npc
-            bitString += intToBinary(9, offset)
-        case "brn":
-            bitString += "0000"
-            bitString += "100"
-            npc = mem_location + 1
-            target = tokens[1]
-            if target not in labels:
-                print(f"Label {target} not defined.")
-            target_loc = labels[target]
-            offset = target_loc - npc
-            bitString += intToBinary(9, offset)
-        case "brz":
-            bitString += "0000"
-            bitString += "010"
-            npc = mem_location + 1
-            target = tokens[1]
-            if target not in labels:
-                print(f"Label {target} not defined.")
-            target_loc = labels[target]
-            offset = target_loc - npc
-            bitString += intToBinary(9, offset)
-        case "brp":
-            bitString += "0000"
-            bitString += "001"
-            npc = mem_location + 1
-            target = tokens[1]
-            if target not in labels:
-                print(f"Label {target} not defined.")
-            target_loc = labels[target]
-            offset = target_loc - npc
-            bitString += intToBinary(9, offset)
-        case "brnz":
-            bitString += "0000"
-            bitString += "110"
-            npc = mem_location + 1
-            target = tokens[1]
-            if target not in labels:
-                print(f"Label {target} not defined.")
-            target_loc = labels[target]
-            offset = target_loc - npc
-            bitString += intToBinary(9, offset)
-        case "brnp":
-            bitString += "0000"
-            bitString += "101"
-            npc = mem_location + 1
-            target = tokens[1]
-            if target not in labels:
-                print(f"Label {target} not defined.")
-            target_loc = labels[target]
-            offset = target_loc - npc
-            bitString += intToBinary(9, offset)
-        case "brzp":
-            bitString += "0000"
-            bitString += "011"
-            npc = mem_location + 1
-            target = tokens[1]
-            if target not in labels:
-                print(f"Label {target} not defined.")
-            target_loc = labels[target]
-            offset = target_loc - npc
-            bitString += intToBinary(9, offset)
-        case "brnzp":
-            bitString += "0000"
-            bitString += "111"
-            npc = mem_location + 1
-            target = tokens[1]
-            if target not in labels:
-                print(f"Label {target} not defined.")
-            target_loc = labels[target]
-            offset = target_loc - npc
-            bitString += intToBinary(9, offset)
-        case "jmp":
-            bitString += "1100"
-            bitString += "000"
-            baseReg = int(tokens[1][1:])
-            bitString += intToUnsignedBinary(3, baseReg)
-            bitString += "000000"
-        case "halt":
-            bitString += "1111"
-            bitString += "000000"
-            bitString += "100101"
-    print(f"{mem_location}: {bitString[0:4]} {bitString[4:8]} {bitString[8:12]} {bitString[12:16]}")
-    data = int(bitString, 2).to_bytes(2, byteorder="big")
-    f.write(data)
-    print(data.hex())
+                    offset = target_loc - npc
+                    bitString += intToBinary(9, offset)
+                case "brn":
+                    bitString += "0000"
+                    bitString += "100"
+                    npc = mem_location + 1
+                    target = tokens[1]
+                    if target not in labels:
+                        print(f"Label {target} not defined.")
+                    target_loc = labels[target]
+                    offset = target_loc - npc
+                    bitString += intToBinary(9, offset)
+                case "brz":
+                    bitString += "0000"
+                    bitString += "010"
+                    npc = mem_location + 1
+                    target = tokens[1]
+                    if target not in labels:
+                        print(f"Label {target} not defined.")
+                    target_loc = labels[target]
+                    offset = target_loc - npc
+                    bitString += intToBinary(9, offset)
+                case "brp":
+                    bitString += "0000"
+                    bitString += "001"
+                    npc = mem_location + 1
+                    target = tokens[1]
+                    if target not in labels:
+                        print(f"Label {target} not defined.")
+                    target_loc = labels[target]
+                    offset = target_loc - npc
+                    bitString += intToBinary(9, offset)
+                case "brnz":
+                    bitString += "0000"
+                    bitString += "110"
+                    npc = mem_location + 1
+                    target = tokens[1]
+                    if target not in labels:
+                        print(f"Label {target} not defined.")
+                    target_loc = labels[target]
+                    offset = target_loc - npc
+                    bitString += intToBinary(9, offset)
+                case "brnp":
+                    bitString += "0000"
+                    bitString += "101"
+                    npc = mem_location + 1
+                    target = tokens[1]
+                    if target not in labels:
+                        print(f"Label {target} not defined.")
+                    target_loc = labels[target]
+                    offset = target_loc - npc
+                    bitString += intToBinary(9, offset)
+                case "brzp":
+                    bitString += "0000"
+                    bitString += "011"
+                    npc = mem_location + 1
+                    target = tokens[1]
+                    if target not in labels:
+                        print(f"Label {target} not defined.")
+                    target_loc = labels[target]
+                    offset = target_loc - npc
+                    bitString += intToBinary(9, offset)
+                case "brnzp":
+                    bitString += "0000"
+                    bitString += "111"
+                    npc = mem_location + 1
+                    target = tokens[1]
+                    if target not in labels:
+                        print(f"Label {target} not defined.")
+                    target_loc = labels[target]
+                    offset = target_loc - npc
+                    bitString += intToBinary(9, offset)
+                case "jmp":
+                    bitString += "1100"
+                    bitString += "000"
+                    baseReg = int(tokens[1][1:])
+                    bitString += intToUnsignedBinary(3, baseReg)
+                    bitString += "000000"
+                case "halt":
+                    bitString += "1111"
+                    bitString += "000000"
+                    bitString += "100101"
+            print(f"{mem_location}: {bitString[0:4]} {bitString[4:8]} {bitString[8:12]} {bitString[12:16]}")
+            data = int(bitString, 2).to_bytes(2, byteorder="big")
+            f.write(data)
+        elif i[1] == "data":
+            bitString = intToBinary(16, i[2])
+            f.write(int(bitString, 2).to_bytes(2, byteorder="big"))
+
+
 f.close()
 print("Output program generated successfully")
